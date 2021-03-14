@@ -1,0 +1,292 @@
+--[[
+--高效双向链表，插入删除都是O(1)，如何使用见最下方例子
+--注意：不支持迭代过程中从列表中删除结点，但是可以特殊处理实现，见最下方例子
+--跟C#版本主要区别是删除内部迭代变量，虽然内部迭代变量支持迭代过程中从列表中删除结点，但是多次迭代会使迭代变量脏掉，容易没考虑到
+--]]
+local setmetatable = setmetatable
+
+---@class ViRefList
+---@field _cnt number
+---@field _root ViRefListNode
+local ViRefList = {}
+ViRefList.__index = ViRefList
+
+---@param pre ViRefListNode
+---@param next ViRefListNode
+local function _Link(pre, next)
+    pre.Next = next
+    next.Pre = pre
+end
+
+---@param pre ViRefListNode
+---@param next ViRefListNode
+local function _PushAfter(before, node)
+    local next = before.Next
+    _Link(before, node)
+    _Link(node, next)
+end
+
+---@param pre ViRefListNode
+---@param next ViRefListNode
+local function _PushBefore(after, node)
+    local pre = after.Pre
+    _Link(pre, node)
+    _Link(node, after)
+end
+
+---@param self ViRefList
+local function _Init(self)
+    self._root._list = self
+    _Link(self._root, self._root)
+    self._cnt = 0
+end
+
+
+
+---@return ViRefList
+function ViRefList:New()
+    local t = {_cnt = 0, _root = ViRefListNode:New()}
+    _Init(t)
+    return setmetatable(t, ViRefList)
+end
+
+---链表长度
+---@return number
+function ViRefList:Size()
+    return self._cnt
+end
+
+---链表是否空
+---@return boolean
+function ViRefList:IsEmpty()
+    return self._cnt == 0
+end
+
+---迭代是否结束
+---@param node ViRefListNode
+---@return boolean
+function ViRefList:IsEnd(node)
+    return node == self._root
+end
+
+---获得第一个结点
+---@return ViRefListNode
+function ViRefList:GetHead()
+    return self._root.Next
+end
+
+---获得最后一个结点
+---@return ViRefListNode
+function ViRefList:GetTail()
+    return self._root.Pre
+end
+
+
+---@param node ViRefListNode
+function ViRefList:_Detach(node)
+    if node == self.Next then---如果是正在迭代的点，则自动将next移动移到下个点
+        self.Next = self.Next.Next
+    end
+    _Link(node.Pre, node.Next)
+    node.Pre = nil
+    node.Next = nil
+    self._cnt = self._cnt - 1
+end
+
+---node加到链表最后
+---@param node ViRefListNode
+function ViRefList:PushBack(node)
+    node:Detach()
+    self._cnt = self._cnt + 1
+    node._list = self
+    _PushBefore(self._root, node)
+end
+
+---node加到链表最前
+---@param node ViRefListNode
+function ViRefList:PushFront(node)
+    node:Detach()
+    self._cnt = self._cnt + 1
+    node._list = self
+    _PushAfter(self._root, node)
+end
+
+---before之后加node
+---@param before ViRefListNode
+---@param node ViRefListNode
+function ViRefList:PushAfter(before, node)
+    node:Detach()
+    self._cnt = self._cnt + 1
+    node._list = self
+    _PushAfter(before, node)
+end
+
+---after之前加node
+---@param after ViRefListNode
+---@param node ViRefListNode
+function ViRefList:PushBefore(after, node)
+    node:Detach()
+    self._cnt = self._cnt + 1
+    node._list = self
+    _PushBefore(after, node)
+end
+
+---将list链表所有结点按正向顺序都加到自己最后面
+---@param list ViRefList
+function ViRefList:PushBackList(list)
+    self:PushBeforeList(self._root, list)
+end
+
+---将list链表所有结点按正向顺序都加到自己最前面
+---@param list ViRefList
+function ViRefList:PushFrontList(list)
+    self:PushAfterList(self._root, list)
+end
+
+---将list链表所有结点按正向顺序都加到before结点后面
+---@param before ViRefListNode
+---@param list ViRefList
+function ViRefList:PushAfterList(before, list)
+    if list == nil then
+        return
+    end
+    local size = list:Size()
+    if size == 0 then
+        return
+    end
+    if before:IsAttachList(list) then
+        return
+    end
+    if before:IsAttach() == false then
+        return
+    end
+    local receiveList = before._list
+    local iter = list._root.Next
+    while iter ~= list._root do
+        iter._list = receiveList
+        iter = iter.Next
+    end
+    local first = list._root.Next
+    local back = list._root.Pre
+    local next = before.Next
+    _Link(before, first)
+    _Link(back, next)
+    receiveList._cnt = receiveList._cnt + size
+    _Init(list)
+end
+
+---将list链表所有结点按正向顺序都加到after结点之前
+---@param before ViRefListNode
+---@param list ViRefList
+function ViRefList:PushBeforeList(after, list)
+    if list == nil then
+        return
+    end
+    local size = list:Size()
+    if size == 0 then
+        return
+    end
+    if after:IsAttachList(list) then
+        return
+    end
+    if after:IsAttach() == false then
+        return
+    end
+    local receiveList = after._list
+    local iter = list._root.Next
+    while iter ~= list._root do
+        iter._list = receiveList
+        iter = iter.Next
+    end
+    local first = list._root.Next
+    local back = list._root.Pre
+    local pre = after.Pre
+    _Link(pre, first)
+    _Link(back, after)
+    receiveList._cnt = receiveList._cnt + size
+    _Init(list)
+end
+
+---清理链表
+function ViRefList:Clear()
+    local next = self._root.Next
+    while next ~= self._root do
+        local nextCopy = next.Next
+        next.Pre = nil
+        next.Next = nil
+        next._list = nil
+        next = nextCopy
+    end
+    _Init(self)
+end
+
+---清理列表和内容
+function ViRefList:ClearAndClearContent()
+    local next = self._root.Next
+    while next ~= self._root do
+        local nextCopy = next.Next
+        next.Pre = nil
+        next.Next = nil
+        next._list = nil
+        next.Data = nil
+        next = nextCopy
+    end
+    _Init(self)
+end
+
+if false then
+    print("ViRefList test start<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+    local list = ViRefList:New()
+    local node1 = ViRefListNode:New(1)
+    local node2 = ViRefListNode:New(2)
+    local node3 = ViRefListNode:New(3)
+    local node4 = ViRefListNode:New(4)
+    list:PushBack(node1)
+    list:PushAfter(node1, node2)
+    list:PushBefore(node2, node3)
+    list:PushFront(node4)
+
+    ---正向迭代  4 -> 1 -> 3 -> 2  注意，迭代过程不能从链表中删除结点
+    local iter = list:GetHead()
+    while not list:IsEnd(iter) do
+        local data = iter.Data
+        iter = iter.Next
+        print("iter forward:"..data)
+    end
+
+    ---反向迭代 2 -> 3 -> 1 -> 4   注意，迭代过程不能从链表中删除结点
+    local iter = list:GetTail()
+    while not list:IsEnd(iter) do
+        local data = iter.Data
+        iter = iter.Pre
+        print("iter back:" .. data)
+    end
+
+    ---支持迭代过程从链表中删除结点，需要准备cacheNodes和cacheNode_n来缓存下个结点数据
+    ---迭代到1时删除下个结点， 4 -> 1 -> 2
+    local cacheNodes = {} --这个用数组是为了支持多次迭代
+    local cacheNode_n = 0
+    local detachFunc = function(node)
+        cacheNodes[cacheNode_n] = node.Next ----删除结点前更新下一个
+        node:Detach()
+    end
+    local iter = list:GetHead()
+    while not list:IsEnd(iter) do
+        local idx = cacheNode_n + 1
+        cacheNode_n = idx
+        cacheNodes[idx] = iter.Next
+        local data = iter.Data
+        if data == 1 then
+            detachFunc(iter.Next)---删除下个结点
+        end
+        print("-----iter with detach:"..data)
+        iter = cacheNodes[idx]
+        cacheNode_n = idx - 1
+        print("iter forward:"..data)
+    end
+    ---清理
+    list:ClearAndClearContent()
+    print("ViRefList test end>>>>>>>>>>>>>>>>>>>>>>>>>")
+end
+
+return ViRefList

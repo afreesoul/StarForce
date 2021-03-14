@@ -1,0 +1,60 @@
+local setmetatable = setmetatable
+
+---@class ViRefListNode
+---@field Pre ViRefListNode
+---@field Next ViRefListNode
+---@field _list ViRefList
+---@field Data any
+local ViRefListNode = {}
+ViRefListNode.__index = ViRefListNode
+
+local _tables = {}
+local _table_n = 0
+
+function ViRefListNode:New(data)
+    if _table_n == 0 then
+        local t = {Data = data, Pre = nil, Next = nil, _list = nil}
+        return setmetatable(t, ViRefListNode)
+    else
+        local t = _tables[_table_n]
+        _table_n = _table_n - 1
+        t.Data = data
+        return t
+    end
+end
+
+function ViRefListNode:IsAttach()
+    return self._list ~= nil
+end
+
+---@param list ViRefList
+function ViRefListNode:IsAttachList(list)
+    return self._list == list
+end
+
+function ViRefListNode:Detach()
+    if self._list ~= nil then
+        self._list:_Detach(self)
+        self._list = nil
+    end
+end
+
+---销毁，只有切换大场景才需要
+function ViRefListNode:Destroy()
+    self:Detach()
+    self.Pre = nil
+    self.Next = nil
+    self.Data = nil
+end
+
+---回收循环利用，注意不用了才回收，要确保没有其他地方保存它的引用
+function ViRefListNode:Release()
+    self:Detach()
+    self.Pre = nil
+    self.Next = nil
+    self.Data = nil
+    _table_n = _table_n + 1
+    _tables[_table_n] = self
+end
+
+return ViRefListNode

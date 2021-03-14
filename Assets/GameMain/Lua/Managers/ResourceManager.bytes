@@ -1,0 +1,44 @@
+
+local ResourceManager = {}
+
+local m_LoadAssetInfos = {nil, nil, nil, nil}
+local m_LoadAssetCountPerFrame = 4
+local m_ReadOnlyPath = CS.UnityEngine.Application.streamingAssetsPath
+
+function ResourceManager.LoadAsset(assetName, assetType, priority, loadAssetCallbacks, userData)
+    if loadAssetCallbacks == nil then
+        error("Load asset callbacks is invalid.")
+    end
+    table.insert(m_LoadAssetInfos, {assetName, assetType, priority, loadAssetCallbacks, userData})
+end
+
+
+function ResourceManager.Update()
+    local count = 0
+    local moveCount = 0
+    for _, loadAssetInfo in ipairs(m_LoadAssetInfos) do
+        if count < m_LoadAssetCountPerFrame then
+            local assetName, assetType = loadAssetInfo[1], loadAssetInfo[2]
+            local asset = nil
+            if assetType ~= nil then
+                asset = CS.UnityEditor.AssetDatabase.LoadAssetAtPath(assetName, assetType)
+            else
+                asset = UnityEditor.AssetDatabase.LoadMainAssetAtPath(assetName)
+            end
+            local LoadAssetCallbacks = loadAssetInfo[4]
+            if LoadAssetCallbacks ~= nil then
+                LoadAssetCallbacks(assetName, asset)
+            end
+            count = count + 1
+        else
+            moveCount  = moveCount + 1
+        end
+    end
+    if moveCount > 0 then
+        table.move(m_LoadAssetInfos, count, count + moveCount, 1)
+    end
+
+end
+
+
+return ResourceManager

@@ -1,0 +1,11 @@
+
+local UIEventDefStart = 100
+local EventDef = {
+
+--------------UI start
+    UICreatePanel = UIEventDefStart + 1,
+    UIDestoryPanel = UIEventDefStart + 2,
+
+}
+
+return EventDef

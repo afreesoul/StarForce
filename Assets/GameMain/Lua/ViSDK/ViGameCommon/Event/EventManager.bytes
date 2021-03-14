@@ -1,0 +1,150 @@
+
+---@class EventManager
+---@field _eventHandlers table<number, ViRefList>
+---@field _cachedNodes ViRefList[] @抛出事件遍历时缓存下个结点，因为回调里取消注册有可能改变遍历的下个结点
+---@field _cachedEventId ViRefList[] @抛出事件遍历时缓存当前eventId，因为怕不同事件有相同回调函数无法区分
+---@field _cachedNode_n number  @缓存个数
+local EventManager = {}
+
+EventManager.__index = EventManager
+
+---缓存事件结点数据
+local _tables = {}
+local _table_n = 0
+
+local function _GetData(func, instance)
+    if _table_n == 0 then
+        return {f = func, self = instance}
+    else
+        local data = _tables[_table_n]
+        _table_n = _table_n - 1
+        data.f = func
+        data.self = instance
+        return data
+    end
+end
+
+local function _ReleaseData(data)
+    data.f = nil
+    data.self = nil
+    _table_n = _table_n + 1
+    _tables[_table_n] = data
+end
+
+---@return EventManager
+function EventManager:New()
+    local t = {_eventHandlers = {}, _cachedNodes = {}, _cachedEventId = {}, _cached_n = 0}
+    return setmetatable(t, EventManager)
+end
+
+---注册事件
+function EventManager:Subscribe(eventId, func, instance)
+    local handlers = self._eventHandlers[eventId]
+    if nil == handlers then
+        handlers = ViRefList:New()
+        self._eventHandlers[eventId] = handlers
+    else
+        local iter = handlers:GetHead()
+        while not handlers:IsEnd(iter) do
+            local data = iter.Data
+            iter = iter.Next
+            if data.f == func and data.self == instance then
+                warn("EventManager.Subscribe repeate", eventId, func)
+                return
+            end
+        end
+    end
+    handlers:PushBack(ViRefListNode:New(_GetData(func, instance)))
+end
+
+function EventManager:Unsubscribe(eventId, func, instance)
+    local handlers = self._eventHandlers[eventId]
+    if nil == handlers then
+        return
+    end
+    local iter = handlers:GetHead()
+    while not handlers:IsEnd(iter) do
+        local data = iter.Data
+        if data.f == func and data.self == instance then
+            if self._cached_n > 0 then---更新迭代中的下个结点
+                for idx, cachedNode in ipairs(self._cachedNodes) do
+                    local iterData = cachedNode.Data
+                    if iterData ~= nil and iterData.f == func and iterData.self == instance and self._cachedEventId[idx] == eventId then
+                        self._cachedNodes[idx] = cachedNode.Next
+                    end
+                end
+            end
+            _ReleaseData(data)
+            iter:Release()
+            return
+        end
+        iter = iter.Next
+    end
+end
+
+function EventManager:FireNow(eventId, param)
+    local handlers = self._eventHandlers[eventId]
+    if nil == handlers then
+        return
+    end
+    local iter = handlers:GetHead()
+    while not handlers:IsEnd(iter) do
+        local idx = self._cached_n + 1
+        self._cachedNodes[idx] = iter.Next
+        self._cachedEventId[idx] = eventId
+        self._cached_n = idx
+        local data = iter.Data
+        if data.self then
+            data.f(data.self, param)
+        else
+            data.f(param)
+        end
+        iter = self._cachedNodes[idx]
+        self._cachedNodes[idx] = nil
+        self._cachedEventId[idx] = nil
+        self._cached_n = idx - 1
+    end
+end
+
+function EventManager:Clear()
+    if self._eventHandlers ~= nil then
+        for _, handlers in pairs(self._eventHandlers) do
+            handlers:ClearAndClearContent()
+        end
+        self._eventHandlers = nil
+    end
+end
+
+if true then---callback1里加入callback4并取消callBack2
+    print("EventManager test start<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+    local eventMgr = EventManager:New()
+
+    local callBack2 = function()
+        print("callback2")
+    end
+    local callBack3 = function()
+        print("callback3")
+    end
+    local callBack1 = function(callBack1Self, param)
+        print("callback1:", callBack1Self, param)
+        ---取消注册
+        eventMgr:Subscribe(1, function() print("---callback4---") end)
+        eventMgr:Unsubscribe(1, callBack2)
+    end
+    local callBack1Self = 5
+
+    ---注册事件
+    eventMgr:Subscribe(1, callBack1, callBack1Self)
+    eventMgr:Subscribe(1, callBack2)
+    eventMgr:Subscribe(1, callBack3)
+    ---立即抛出事件
+    local param = 9
+    eventMgr:FireNow(1, param)
+    ---清理
+    eventMgr:Clear()
+    print("EventManager test end>>>>>>>>>>>>>>>>>>>>>>>>>")
+end
+
+
+
+return EventManager

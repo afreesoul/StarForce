@@ -3,3 +3,5 @@ Packages
 obj
 Assets/GameMain/Lua/.idea/*
 *.csproj
+.vs/StarForce/v16/.suo
+StarForce.sln

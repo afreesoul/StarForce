@@ -1,0 +1,25 @@
+
+
+_G.ViRefListNode = require("ViSDK/ViBaseStruct/ViRefListNode")
+_G.ViRefList = require("ViSDK/ViBaseStruct/ViRefList")
+_G.EventManager = require("ViSDK/ViGameCommon/Event/EventManager")
+--_G.EventDef = require("Global/EventDef")
+--_G.UIFormId = require("UI/UIFormId")
+--_G.UIForm = require("Config/Data/UIForm")
+require("Common/Main")
+
+_G.PCALL_ERROR_FUNCTION = function(message)
+    error(message)
+end
+
+setmetatable(_G, {
+    -- 控制新建全局变量
+    __newindex = function(_, k)
+        error("attempt to add a new value to global,key: " .. k, 2)
+    end,
+
+    -- 控制访问全局变量
+    __index = function(_, k)
+        error("attempt to index a global value,key: "..k,2)
+    end
+})

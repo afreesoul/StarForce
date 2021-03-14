@@ -1,0 +1,38 @@
+
+
+local UIManager = {}
+
+
+
+function UIManager.IsLoadingUIForm(assetName)
+    return false
+end
+
+function UIManager.HasUIForm(assetName)
+    return false
+end
+
+function UIManager.Open(uiFormId)
+    local drUIForm = UIForm[uiFormId]
+    if nil == drUIForm then
+        error("Can not load UI from"..uiFormId, 2)
+        return nil
+    end
+    local assetName = drUIForm["AssetName"]
+    if drUIForm["AllowMultiInstance"] ~= 1 then
+        if UIManager.IsLoadingUIForm(assetName) then
+            return nil
+        end
+        if UIManager.HasUIForm(assetName) then
+            return nil
+        end
+    end
+    return UIManager.OpenUIForm(assetName, drUIForm["UIGroupName"], 50, drUIForm["PauseCoveredUIForm"])
+end
+
+function UIManager.OpenUIForm(uiFormAssetName, uiGroupName, priority, pauseCoveredUIForm)
+    
+    
+end
+
+return UIManager

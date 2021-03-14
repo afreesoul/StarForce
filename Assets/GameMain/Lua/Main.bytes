@@ -1,0 +1,19 @@
+
+Main = {}
+
+require("Global/Global")
+
+function Main.Start()
+
+    
+end
+
+
+function Main.Update()
+
+end
+
+
+function Main.End()
+
+end

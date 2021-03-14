@@ -1,0 +1,39 @@
+--[[
+
+        UIForm.lua
+        exported by excel2lua.py
+        from file:UIForm.xls
+
+--]]
+
+local UIForm = {
+    [1] = {
+        Id = 1,
+        AssetName = 'DialogForm',
+        UIGroupName = 'Default',
+        AllowMultiInstance = 1,
+        PauseCoveredUIForm = 1,
+    },
+    [100] = {
+        Id = 100,
+        AssetName = 'MenuForm',
+        UIGroupName = 'Default',
+        AllowMultiInstance = 0,
+        PauseCoveredUIForm = 1,
+    },
+    [101] = {
+        Id = 101,
+        AssetName = 'SettingForm',
+        UIGroupName = 'Default',
+        AllowMultiInstance = 0,
+        PauseCoveredUIForm = 1,
+    },
+    [102] = {
+        Id = 102,
+        AssetName = 'AboutForm',
+        UIGroupName = 'Default',
+        AllowMultiInstance = 0,
+        PauseCoveredUIForm = 1,
+    },
+}
+return UIForm
